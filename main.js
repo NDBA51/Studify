@@ -1,0 +1,19 @@
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            document.querySelector(this.getAttribute('href')).scrollIntoView({
+                behavior: 'smooth'
+            });
+        });
+    });
+});
+
+function showSignupForm() {
+    document.getElementById('signupModal').style.display = 'flex';
+}
+
+function closeSignupForm() {
+    document.getElementById('signupModal').style.display = 'none';
+}
