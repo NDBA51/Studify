@@ -24,8 +24,4 @@ A comprehensive student management platform that helps students organize their a
 
 Students can access Studify through any modern web browser. After creating an account, users can immediately start managing their academic tasks, creating notes, and organizing their schedule through an intuitive interface.
 
-## Team 👥
-
-- Najaf Ali 
-- Musa 
-- Zubair 
+## NDBA51

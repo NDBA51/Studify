@@ -1,4 +1,3 @@
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-analytics.js";
 import { getDatabase, ref, set, get, update } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
@@ -22,24 +21,87 @@ const firebaseConfig = {
   measurementId: "G-C5E0PSV3ML",
 };
 
-emailjs.init('GiiYwF-mWFul0mskY');
-
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const auth = getAuth(app);
 const database = getDatabase(app);
 
+const EMAILJS_PUBLIC_KEY = 'GiiYwF-mWFul0mskY';
+const EMAILJS_SERVICE_ID = 'service_rpn582t';
+const EMAILJS_TEMPLATE_ID = 'template_p4qsg2m';
 
-console.log("Firebase initialized");
+emailjs.init(EMAILJS_PUBLIC_KEY);
+
+
+async function checkAndSendReminders(userId) {
+  try {
+    const userSnapshot = await get(ref(database, `users/${userId}`));
+    if (!userSnapshot.exists()) {
+
+      return;
+    }
+
+    const userData = userSnapshot.val();
+    const sections = ['assignments', 'quizzes'];
+
+    for (const section of sections) {
+      const items = userData[section] || {};
+      for (const [itemId, item] of Object.entries(items)) {
+
+
+        if (!item.dueDate) {
+          continue;
+        }
+        if (!item.reminderSettings?.enabled) {
+          continue;
+        }
+        if (item.reminderSent) {
+          continue;
+        }
+        const dueDate = new Date(item.dueDate);
+        const now = new Date();
+        const hoursUntilDue = (dueDate - now) / (1000 * 60 * 60);
+        const reminderTimeframe = item.reminderSettings?.timeframe || 6;
+        if (hoursUntilDue <= reminderTimeframe && hoursUntilDue > 0) {
+
+          const templateParams = {
+            user_name: userData.name,
+            user_email: userData.email,
+            assignment_name: item.title,
+            due_date: dueDate.toLocaleString(),
+            hours_remaining: Math.round(hoursUntilDue)
+          };
+
+          try {
+            const response = await emailjs.send(
+              EMAILJS_SERVICE_ID,
+              EMAILJS_TEMPLATE_ID,
+              templateParams,
+              EMAILJS_PUBLIC_KEY
+            );
+            await update(ref(database, `users/${userId}/${section}/${itemId}`), {
+              reminderSent: true,
+              'reminderSettings.lastReminder': now.getTime()
+            });
+
+
+          } catch (emailError) {
+
+            throw emailError;
+          }
+        }
+      }
+    }
+  } catch (error) {
+    throw error;
+  }
+}
 
 async function createUserData(userId, userData) {
   try {
-
     await set(ref(database, `users/${userId}`), userData);
-    console.log("User data created successfully");
     return true;
   } catch (error) {
-    console.error("Error creating user data:", error);
     throw error;
   }
 }
@@ -48,10 +110,10 @@ async function saveUserData(userId, userData) {
   try {
     const userRef = ref(database, `users/${userId}`);
     await set(userRef, userData);
-    console.log("User data saved successfully");
+
     return true;
   } catch (error) {
-    console.error("Error saving user data:", error);
+
     throw error;
   }
 }
@@ -61,9 +123,6 @@ async function handleSignup(name, email, university, degree, password) {
 
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
-    console.log("User account created:", user.uid);
-
-
     const currentTime = Date.now();
     const userData = {
       name,
@@ -80,11 +139,10 @@ async function handleSignup(name, email, university, degree, password) {
     await saveUserData(user.uid, userData);
     return user;
   } catch (error) {
-    console.error("Error in signup:", error);
+
     throw error;
   }
 }
-
 
 const currentPage = window.location.pathname.split('/').pop();
 
@@ -112,18 +170,16 @@ function createItemCard(item, type) {
   `;
 }
 
-
 async function deleteItem(userId, section, itemId) {
   try {
     const itemRef = ref(database, `users/${userId}/${section}/${itemId}`);
     await set(itemRef, null);
-    console.log(`${section} item deleted successfully`);
+
   } catch (error) {
-    console.error(`Error deleting ${section} item:`, error);
+
     throw error;
   }
 }
-
 
 async function loadTabContent(section, userId) {
   const contentArea = document.getElementById('dynamicContent');
@@ -155,8 +211,6 @@ async function loadTabContent(section, userId) {
 
       const events = [];
       let allEvents = [];
-
-
       const assignmentsSnapshot = await get(ref(database, `users/${userId}/assignments`));
       if (assignmentsSnapshot.exists()) {
         Object.entries(assignmentsSnapshot.val()).forEach(([id, assignment]) => {
@@ -174,8 +228,6 @@ async function loadTabContent(section, userId) {
           }
         });
       }
-
-
       const quizzesSnapshot = await get(ref(database, `users/${userId}/quizzes`));
       if (quizzesSnapshot.exists()) {
         Object.entries(quizzesSnapshot.val()).forEach(([id, quiz]) => {
@@ -193,7 +245,6 @@ async function loadTabContent(section, userId) {
           }
         });
       }
-
       if (snapshot.exists()) {
         Object.entries(snapshot.val()).forEach(([id, event]) => {
           if (event.startDate) {
@@ -211,7 +262,6 @@ async function loadTabContent(section, userId) {
           }
         });
       }
-
       const calendarEl = document.getElementById('calendar');
       if (calendarEl) {
         calendar = new FullCalendar.Calendar(calendarEl, {
@@ -239,15 +289,12 @@ async function loadTabContent(section, userId) {
                   event.remove();
                 })
                 .catch(error => {
-                  console.error('Error deleting event:', error);
                   alert('Failed to delete event. Please try again.');
                 });
             }
           }
         });
         calendar.render();
-
-
         const calendarAddButton = document.getElementById('calendarAddButton');
         if (calendarAddButton) {
           calendarAddButton.addEventListener('click', () => {
@@ -255,8 +302,6 @@ async function loadTabContent(section, userId) {
             addModal.show();
           });
         }
-
-
         const deleteButton = document.getElementById('calendarDeleteButton');
         if (deleteButton) {
           deleteButton.addEventListener('click', () => {
@@ -306,8 +351,6 @@ async function loadTabContent(section, userId) {
 
             const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
             deleteModal.show();
-
-
             document.querySelectorAll('.delete-event-item').forEach(item => {
               item.addEventListener('click', async () => {
                 const id = item.dataset.id;
@@ -330,7 +373,6 @@ async function loadTabContent(section, userId) {
                       deleteModal.hide();
                     }
                   } catch (error) {
-                    console.error('Error deleting event:', error);
                     alert('Failed to delete event. Please try again.');
                   }
                 }
@@ -355,8 +397,6 @@ async function loadTabContent(section, userId) {
       }
       content += '</div>';
       contentArea.innerHTML = content;
-
-
       const deleteButtons = document.querySelectorAll('.delete-btn');
       deleteButtons.forEach(button => {
         button.addEventListener('click', async (e) => {
@@ -368,7 +408,6 @@ async function loadTabContent(section, userId) {
                 await deleteItem(userId, section, itemId);
                 loadTabContent(section, userId);
               } catch (error) {
-                console.error('Failed to delete item:', error);
               }
             }
           }
@@ -376,56 +415,68 @@ async function loadTabContent(section, userId) {
       });
     }
   } catch (error) {
-    console.error(`Error loading ${section}:`, error);
     contentArea.innerHTML = `<p class="text-center text-danger">Error loading ${section}. Please try again.</p>`;
   }
 }
 
 async function handleAddItem(userId, section, data) {
-  const itemId = generateUniqueId();
-  const itemRef = ref(database, `users/${userId}/${section}/${itemId}`);
-
-  const itemData = {
-    ...data,
-    createdAt: Date.now(),
-    id: itemId
-  };
-
   try {
+    const sectionRef = ref(database, `users/${userId}/${section}`);
+    const snapshot = await get(sectionRef);
+
+    if (snapshot.exists()) {
+      const items = snapshot.val();
+      const isDuplicate = Object.values(items).some(item =>
+        item.title.toLowerCase() === data.title.toLowerCase() &&
+        (item.dueDate === data.dueDate ||
+          (item.dueDate && data.dueDate &&
+            new Date(item.dueDate).getTime() === new Date(data.dueDate).getTime()))
+      );
+      if (isDuplicate) {
+        throw new Error(`A ${section.slice(0, -1)} with this title and due date already exists.`);
+      }
+    }
+    const itemId = generateUniqueId();
+    const itemRef = ref(database, `users/${userId}/${section}/${itemId}`);
+
+    const itemData = {
+      ...data,
+      createdAt: Date.now(),
+      id: itemId,
+      reminderSettings: {
+        enabled: true,
+        timeframe: 6,
+        lastReminder: null
+      },
+      reminderSent: false
+    };
+
     await set(itemRef, itemData);
     return itemId;
   } catch (error) {
-    console.error(`Error adding ${section} item:`, error);
     throw error;
   }
 }
-
-
-
 async function updateLastLoginTime(userId) {
   try {
     const currentTime = Date.now();
     await update(ref(database, `users/${userId}`), {
       lastLogin: currentTime
     });
-    console.log("Last login time updated successfully");
     return currentTime;
   } catch (error) {
-    console.error("Error updating last login time:", error);
+
     throw error;
   }
 }
 
 async function updateProfileUI(user, lastLoginTime = null) {
   try {
-    console.log("Fetching user data for:", user.uid);
+
     const snapshot = await get(ref(database, `users/${user.uid}`));
-
     if (snapshot.exists()) {
+
       const userData = snapshot.val();
-      console.log("Fetched user data:", userData);
-
-
       const userName = document.getElementById("userName");
       const userUniversity = document.getElementById("userUniversity");
       const welcomeName = document.getElementById("welcomeName");
@@ -434,149 +485,88 @@ async function updateProfileUI(user, lastLoginTime = null) {
       if (userName) userName.textContent = userData.name || "Student";
       if (welcomeName) welcomeName.textContent = userData.name || "Student";
       if (userUniversity) userUniversity.textContent = userData.university || "University";
-
-
       const displayTime = lastLoginTime || userData.lastLogin;
       if (lastLoginElement && displayTime) {
         lastLoginElement.textContent = `Last login: ${new Date(displayTime).toLocaleString()}`;
       }
-
-
       await loadTabContent('assignments', user.uid);
-
-
       const navLinks = document.querySelectorAll('.navlink1');
       navLinks.forEach(link => {
         link.addEventListener('click', async (e) => {
           e.preventDefault();
-
-
           navLinks.forEach(l => l.classList.remove('active'));
           link.classList.add('active');
-
-
           const section = link.getAttribute('data-section');
           await loadTabContent(section, user.uid);
         });
       });
-
-
       const addButton = document.getElementById('addButton');
       const addModal = new bootstrap.Modal(document.getElementById('addModal'));
       const addItemForm = document.getElementById('addItemForm');
-      const saveItemBtn = document.getElementById('saveItem');
 
-      if (addButton && addModal && saveItemBtn) {
-        addButton.addEventListener('click', () => {
-          addModal.show();
-        });
-
-        saveItemBtn.addEventListener('click', async () => {
-          const activeSection = document.querySelector('.navlink1.active').getAttribute('data-section');
-          const title = document.getElementById('itemTitle').value;
-          const description = document.getElementById('itemDescription').value;
-          const dueDate = document.getElementById('itemDueDate').value;
-
-          if (!title) {
-            alert('Please enter a title');
-            return;
-          }
-
-          try {
-            const itemData = {
-              title,
-              description,
-              dueDate: dueDate ? new Date(dueDate).getTime() : null
-            };
-
-            if (activeSection === 'schedule') {
-              itemData.startDate = dueDate;
-              itemData.endDate = dueDate;
-              itemData.type = 'other';
-            }
-
-            await handleAddItem(user.uid, activeSection, itemData);
-            addModal.hide();
-            addItemForm.reset();
-            await loadTabContent(activeSection, user.uid);
-          } catch (error) {
-            alert('Error saving item. Please try again.');
-          }
-        });
-      }
     } else {
-      console.log("No user data found in database");
     }
   } catch (error) {
-    console.error("Error fetching user data:", error);
+
   }
 }
-
-
 onAuthStateChanged(auth, async (user) => {
-  console.log("Auth state changed. Current page:", currentPage);
-  console.log("User:", user);
+
+  if (currentPage == 'login.html') {
+    if (user) {
+      window.location.replace('profile.html');
+    } 
+  }
 
   if (currentPage === 'profile.html') {
     if (!user) {
-      console.log("No user logged in. Redirecting to login page.");
+
       window.location.replace('login.html');
     } else {
-      console.log("User is logged in, updating UI");
-      try {
 
+      try {
         const lastLoginTime = await updateLastLoginTime(user.uid);
         await updateProfileUI(user, lastLoginTime);
-      } catch (error) {
-        console.error("Error in auth state change handler:", error);
-      }
+        checkAndSendReminders(user.uid);
+        const reminderInterval = setInterval(() => {
+          if (document.visibilityState === 'visible') {
+            checkAndSendReminders(user.uid);
+          }
+        }, 15 * 60 * 1000);
+        window.addEventListener('beforeunload', () => {
+          clearInterval(reminderInterval);
+        });
+
+      } catch (error) {}
+  
     }
   }
 });
-
-
-
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("DOM Content Loaded");
 
   const signupForm = document.getElementById("signupForm");
   if (signupForm) {
-    console.log("Found signup form");
-
     signupForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      console.log("Signup form submitted");
-
-
       const name = document.querySelector("#fullName").value.trim();
       const email = document.querySelector("#email").value.trim();
       const university = document.querySelector("#university").value.trim();
       const degree = document.querySelector("#Degree").value.trim();
       const password = document.querySelector("#signupPassword").value.trim();
 
-
       if (!name || !email || !university || !degree || !password) {
         alert("Please fill out all the fields.");
         return;
       }
-
       try {
-
         const submitButton = signupForm.querySelector('button[type="submit"]');
         if (submitButton) {
           submitButton.disabled = true;
           submitButton.textContent = "Signing up...";
         }
-
-        console.log("Creating user account...");
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
-
-        console.log("User created:", user.uid);
-
         const currentTime = Date.now();
-
-
         const userData = {
           name: name,
           email: email,
@@ -588,21 +578,12 @@ document.addEventListener("DOMContentLoaded", () => {
           quizzes: {},
           schedule: {}
         };
-
-
         await set(ref(database, `users/${user.uid}`), userData);
-        console.log("User data saved successfully");
-
-
         alert("Sign-up successful! Your account has been created. Please log in with your credentials.");
-
-
         signupForm.reset();
       } catch (error) {
-        console.error("Error during sign-up:", error);
         alert(error.message);
       } finally {
-
         const submitButton = signupForm.querySelector('button[type="submit"]');
         if (submitButton) {
           submitButton.disabled = false;
@@ -611,52 +592,112 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
-});
+  if (window.location.pathname.includes('profile.html')) {
+    const addButton = document.getElementById('addButton');
+    const addModal = document.getElementById('addModal');
+    const addItemForm = document.getElementById('addItemForm');
+    const reminderSettings = document.getElementById('reminderSettings');
 
-
-const loginForm = document.getElementById("loginForm");
-if (loginForm) {
-  console.log("Found login form");
-  loginForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    console.log("Login form submitted");
-
-    const email = document.querySelector("#username").value.trim();
-    const password = document.querySelector("#password").value.trim();
-
-    if (!email || !password) {
-      alert("Please enter both email and password.");
-      return;
+    if (addButton && addModal) {
+      addButton.addEventListener('click', () => {
+        const activeSection = document.querySelector('.navlink1.active').getAttribute('data-section');
+        if (reminderSettings) {
+          reminderSettings.style.display =
+            (activeSection === 'assignments' || activeSection === 'quizzes') ? 'block' : 'none';
+        }
+        if (addItemForm) {
+          addItemForm.reset();
+        }
+        const bsModal = new bootstrap.Modal(addModal);
+        bsModal.show();
+      });
+      const saveItemBtn = document.getElementById('saveItem');
+      if (saveItemBtn) {
+        saveItemBtn.addEventListener('click', async () => {
+          const activeSection = document.querySelector('.navlink1.active').getAttribute('data-section');
+          const title = document.getElementById('itemTitle').value;
+          const description = document.getElementById('itemDescription').value;
+          const dueDate = document.getElementById('itemDueDate').value;
+          if (!title) {
+            alert('Please enter a title');
+            return;
+          }
+          try {
+            const itemData = {
+              title,
+              description,
+              dueDate: dueDate ? new Date(dueDate).getTime() : null
+            };
+            if (activeSection === 'assignments' || activeSection === 'quizzes') {
+              itemData.reminderSettings = {
+                enabled: true,
+                timeframe: 6,
+                lastReminder: null
+              };
+              itemData.reminderSent = false;
+            }
+            if (activeSection === 'schedule') {
+              itemData.startDate = dueDate;
+              itemData.endDate = dueDate;
+              itemData.type = 'other';
+            }
+            await handleAddItem(auth.currentUser.uid, activeSection, itemData);
+            bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
+            document.getElementById('addItemForm').reset();
+            await loadTabContent(activeSection, auth.currentUser.uid);
+            if (activeSection === 'assignments' || activeSection === 'quizzes') {
+              checkAndSendReminders(auth.currentUser.uid);
+            }
+          } catch (error) {
+            alert('Error saving item. Please try again.');
+          }
+        });
+      }
+      const user = auth.currentUser;
+      if (user) {
+        checkAndSendReminders(user.uid);
+        const reminderInterval = setInterval(() => {
+          if (document.visibilityState === 'visible') {
+            checkAndSendReminders(user.uid);
+          }
+        }, 15 * 60 * 1000);
+        window.addEventListener('beforeunload', () => {
+          clearInterval(reminderInterval);
+        });
+      }
     }
+  };
+  const loginForm = document.getElementById("loginForm");
+  if (loginForm) {
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.querySelector("#username").value.trim();
+      const password = document.querySelector("#password").value.trim();
+      if (!email || !password) {
+        alert("Please enter both email and password.");
+        return;
+      }
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        await updateLastLoginTime(userCredential.user.uid);
+        window.location.replace('profile.html');
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+  }
+  const logoutBtn = document.getElementById("logoutBtn");
+  if (logoutBtn) {
 
-    try {
-      console.log("Attempting login...");
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    logoutBtn.addEventListener("click", async () => {
+      try {
+        await signOut(auth);
+        window.location.replace('login.html');
+      } catch (error) {
 
-      console.log("Login successful, updating last login time...");
-      await updateLastLoginTime(userCredential.user.uid);
-
-      console.log("Redirecting to profile...");
-      window.location.replace('profile.html');
-    } catch (error) {
-      console.error("Error during login:", error);
-      alert(error.message);
-    }
-  });
-}
-
-
-const logoutBtn = document.getElementById("logoutBtn");
-if (logoutBtn) {
-  console.log("Found logout button");
-  logoutBtn.addEventListener("click", async () => {
-    try {
-      await signOut(auth);
-      window.location.replace('login.html');
-    } catch (error) {
-      console.error("Error signing out:", error);
-      alert(error.message);
-    }
-  });
-};
+        alert(error.message);
+      }
+    });
+  };
+})
 
