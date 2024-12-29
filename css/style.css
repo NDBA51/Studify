@@ -493,7 +493,7 @@ input:focus {
     filter: invert(1) grayscale(100%) brightness(200%);
 }
 
-/* Calendar Styling */
+
 #calendar {
     margin: 20px auto;
     max-width: 100%;
@@ -613,4 +613,42 @@ input:focus {
 }
 .fc-timegrid-slot {
     color: #FAF9F6;
+}
+* {
+    cursor: none !important;
+}
+
+.cursor-dot {
+    width: 7px;
+    height: 7px;
+    background: #fff;
+    border-radius: 50%;
+    position: fixed;
+    pointer-events: none;
+    transition: transform 0.3s ease;
+    z-index: 99999;
+}
+
+.cursor-outline {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    position: fixed;
+    pointer-events: none;
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 99998;
+}
+#whys:hover {
+    transform: scale(1.05); 
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+}
+#whys {
+    border-radius: 20px;
+    padding: 25px;
+    margin: 15px;
+    background: linear-gradient(145deg, #1a1a1a, #111111);
+    box-shadow: 8px 8px 16px rgba(0,0,0,0.4),
+     -8px -8px 16px rgba(255,255,255,0.02);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;"
 }
