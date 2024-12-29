@@ -9,12 +9,13 @@ A comprehensive student management platform that helps students organize their a
 - Quiz Tracking 📋
 - Note Taking 📔
 - Schedule Management 📅
+- Deadline Reminder ⌚️
 
 ## Technologies Used 💻
 
 - **Frontend:**
-  - HTML5
-  - CSS3
+  - HTML
+  - CSS
   - JavaScript
 
 - **Backend:**
@@ -24,4 +25,7 @@ A comprehensive student management platform that helps students organize their a
 
 Students can access Studify through any modern web browser. After creating an account, users can immediately start managing their academic tasks, creating notes, and organizing their schedule through an intuitive interface.
 
-## NDBA51
+## Team/Work
+- Najaf - Home,Profile,Database
+- Zubair - Login
+- Musa - Contact 
