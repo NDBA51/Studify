@@ -512,11 +512,7 @@ async function updateProfileUI(user, lastLoginTime = null) {
 }
 onAuthStateChanged(auth, async (user) => {
 
-  if (currentPage == 'login.html') {
-    if (user) {
-      window.location.replace('profile.html');
-    } 
-  }
+
 
   if (currentPage === 'profile.html') {
     if (!user) {
